@@ -21,45 +21,49 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const { signUp } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
   const handleRegister = async () => {
-    if (!username.trim() || !email.trim() || !password.trim()) {
-      setErrorMsg("All fields are required.");
+    const missing = [];
+    if (!username.trim()) missing.push("Username");
+    if (!email.trim()) missing.push("Email Address");
+    if (!password.trim()) missing.push("Password");
+    if (!confirmPassword.trim()) missing.push("Confirm Password");
+
+    if (missing.length > 0) {
+      toast.error(`Missing fields: ${missing.join(", ")}`);
       return;
     }
 
     if (username.trim().length < 3) {
-      setErrorMsg("Username must be at least 3 characters.");
+      toast.error("Username must be at least 3 characters.");
       return;
     }
 
     if (password.length < 6) {
-      setErrorMsg("Password must be at least 6 characters.");
+      toast.error("Password must be at least 6 characters.");
       return;
     }
 
     if (password !== confirmPassword) {
-      setErrorMsg("Passwords do not match.");
+      toast.error("Passwords do not match.");
       return;
     }
 
     setIsSubmitting(true);
-    setErrorMsg(null);
 
     try {
       const result = await signUp(username.trim(), email.trim(), password);
       if (!result.success) {
-        setErrorMsg(result.error || "Failed to register account.");
+        toast.error(result.error || "Failed to register account.");
       } else {
         toast.success("Account registered successfully! Welcome.");
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "Something went wrong");
+      toast.error(err.message || "Something went wrong");
     } finally {
       setIsSubmitting(false);
     }
@@ -86,12 +90,6 @@ export default function RegisterScreen() {
 
         <View style={styles.formContainer}>
           <Text style={styles.formTitle}>Register Account</Text>
-
-          {errorMsg && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{errorMsg}</Text>
-            </View>
-          )}
 
           {/* Username Input */}
           <Text style={styles.label}>Username</Text>

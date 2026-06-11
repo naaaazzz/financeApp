@@ -37,11 +37,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [activeToast, setActiveToast] = useState<ToastOptions | null>(null);
   const timerRef = useRef<any>(null);
   
-  const translateY = useSharedValue(150);
+  const translateY = useSharedValue(-150);
   const opacity = useSharedValue(0);
 
   const hideToast = useCallback(() => {
-    translateY.value = withSpring(150, { damping: 15 }, () => {
+    translateY.value = withSpring(-150, { damping: 15 }, () => {
       runOnJS(setActiveToast)(null);
     });
     opacity.value = withSpring(0);
@@ -76,11 +76,31 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     };
   });
 
+  const getToastStyle = (type: ToastType) => {
+    switch (type) {
+      case "success":
+        return {
+          backgroundColor: "rgba(16, 185, 129, 0.16)",
+          borderColor: "rgba(16, 185, 129, 0.35)",
+        };
+      case "error":
+        return {
+          backgroundColor: "rgba(239, 68, 68, 0.16)",
+          borderColor: "rgba(239, 68, 68, 0.35)",
+        };
+      default:
+        return {
+          backgroundColor: "rgba(99, 102, 241, 0.16)",
+          borderColor: "rgba(99, 102, 241, 0.35)",
+        };
+    }
+  };
+
   return (
     <ToastContext.Provider value={{ toast: { success, error, info } }}>
       {children}
       {activeToast && (
-        <Animated.View style={[styles.toastContainer, animatedStyle]}>
+        <Animated.View style={[styles.toastContainer, getToastStyle(activeToast.type), animatedStyle]}>
           <View style={styles.toastContent}>
             {activeToast.type === "success" && (
               <CheckCircle size={18} color="#10B981" />
@@ -104,19 +124,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 const styles = StyleSheet.create({
   toastContainer: {
     position: "absolute",
-    bottom: Platform.OS === "ios" ? 110 : 90, // Positioned above the navigation tab bar
+    top: Platform.OS === "ios" ? 60 : 45, // Slide down from top of the screen
     left: 20,
     right: 20,
     zIndex: 99999,
-    backgroundColor: "#161930",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 8,
   },

@@ -1,6 +1,22 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
-import { Camera, Check, Image as ImageIcon, X } from "lucide-react-native";
+import { 
+  Camera, 
+  Check, 
+  Image as ImageIcon, 
+  X,
+  Utensils,
+  ShoppingBag,
+  Car,
+  Film,
+  Zap,
+  Heart,
+  Briefcase,
+  Laptop,
+  TrendingUp,
+  Gift,
+  Layers
+} from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -43,6 +59,33 @@ const INCOME_CATEGORIES = [
   "Gifts",
   "Others",
 ];
+
+const getCategoryDetails = (catName: string) => {
+  switch (catName) {
+    case "Food & Dining":
+      return { icon: Utensils, color: "#F59E0B", bg: "rgba(245, 158, 11, 0.12)" };
+    case "Shopping":
+      return { icon: ShoppingBag, color: "#EC4899", bg: "rgba(236, 72, 153, 0.12)" };
+    case "Transportation":
+      return { icon: Car, color: "#3B82F6", bg: "rgba(59, 130, 246, 0.12)" };
+    case "Entertainment":
+      return { icon: Film, color: "#8B5CF6", bg: "rgba(139, 92, 246, 0.12)" };
+    case "Utilities":
+      return { icon: Zap, color: "#EAB308", bg: "rgba(234, 179, 8, 0.12)" };
+    case "Healthcare":
+      return { icon: Heart, color: "#EF4444", bg: "rgba(239, 68, 68, 0.12)" };
+    case "Salary":
+      return { icon: Briefcase, color: "#10B981", bg: "rgba(16, 185, 129, 0.12)" };
+    case "Freelance":
+      return { icon: Laptop, color: "#06B6D4", bg: "rgba(6, 182, 212, 0.12)" };
+    case "Investments":
+      return { icon: TrendingUp, color: "#6366F1", bg: "rgba(99, 102, 241, 0.12)" };
+    case "Gifts":
+      return { icon: Gift, color: "#D946EF", bg: "rgba(217, 70, 239, 0.12)" };
+    default:
+      return { icon: Layers, color: "#8F9BB3", bg: "rgba(143, 155, 179, 0.12)" };
+  }
+};
 
 export default function AddTransactionModal({
   visible,
@@ -106,10 +149,7 @@ export default function AddTransactionModal({
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Permission Denied",
-          "Media library access is required to attach receipts.",
-        );
+        toast.error("Media library access is required to attach receipts.");
         return;
       }
 
@@ -124,7 +164,7 @@ export default function AddTransactionModal({
       }
     } catch (e) {
       console.error("Pick image error:", e);
-      Alert.alert("Error", "Failed to pick image.");
+      toast.error("Failed to pick image.");
     }
   };
 
@@ -132,10 +172,7 @@ export default function AddTransactionModal({
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Permission Denied",
-          "Camera access is required to snap receipts.",
-        );
+        toast.error("Camera access is required to snap receipts.");
         return;
       }
 
@@ -149,7 +186,7 @@ export default function AddTransactionModal({
       }
     } catch (e) {
       console.error("Take photo error:", e);
-      Alert.alert("Error", "Failed to capture photo.");
+      toast.error("Failed to capture photo.");
     }
   };
 
@@ -164,7 +201,7 @@ export default function AddTransactionModal({
       setReceiptUri(destUri);
     } catch (e) {
       console.error("Save image locally error:", e);
-      Alert.alert("Error", "Failed to copy receipt to local storage.");
+      toast.error("Failed to copy receipt to local storage.");
     }
   };
 
@@ -182,22 +219,24 @@ export default function AddTransactionModal({
   };
 
   const handleSubmit = async () => {
+    const missing = [];
+    if (!amount.trim()) missing.push("Amount");
+    if (!walletId) missing.push("Wallet");
+    if (type === "transfer" && !toWalletId) missing.push("Destination Wallet");
+
+    if (missing.length > 0) {
+      toast.error(`Missing fields: ${missing.join(", ")}`);
+      return;
+    }
+
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      Alert.alert("Validation Error", "Please enter a valid positive amount.");
+      toast.error("Please enter a valid positive amount.");
       return;
     }
 
-    if (!walletId) {
-      Alert.alert("Validation Error", "Please select a wallet.");
-      return;
-    }
-
-    if (type === "transfer" && (!toWalletId || walletId === toWalletId)) {
-      Alert.alert(
-        "Validation Error",
-        "Please select different source and destination wallets.",
-      );
+    if (type === "transfer" && walletId === toWalletId) {
+      toast.error("Please select different source and destination wallets.");
       return;
     }
 
@@ -209,7 +248,7 @@ export default function AddTransactionModal({
         const oldTx = transactions.find((t) => t.id === editTransactionId);
         const txDate = oldTx ? oldTx.date : new Date().toISOString();
         result = await updateTransaction(editTransactionId, {
-          walletId,
+          walletId: walletId!,
           toWalletId: type === "transfer" ? toWalletId : null,
           type,
           amount: parsedAmount,
@@ -220,7 +259,7 @@ export default function AddTransactionModal({
         });
       } else {
         result = await addTransaction({
-          walletId,
+          walletId: walletId!,
           toWalletId: type === "transfer" ? toWalletId : null,
           type,
           amount: parsedAmount,
@@ -236,13 +275,10 @@ export default function AddTransactionModal({
         resetForm();
         onClose();
       } else {
-        Alert.alert(
-          "Database Error",
-          result.error || "Could not save transaction.",
-        );
+        toast.error(result.error || "Could not save transaction.");
       }
     } catch (e: any) {
-      Alert.alert("Error", e.message || "An error occurred.");
+      toast.error(e.message || "An error occurred.");
     } finally {
       setIsSubmitting(false);
     }
@@ -270,6 +306,7 @@ export default function AddTransactionModal({
             </View>
 
             <ScrollView
+              style={{ flexShrink: 1 }}
               contentContainerStyle={styles.scrollForm}
               keyboardShouldPersistTaps="handled"
             >
@@ -400,28 +437,46 @@ export default function AddTransactionModal({
               {type !== "transfer" && (
                 <>
                   <Text style={styles.sectionLabel}>Category</Text>
-                  <View style={styles.categoryGrid}>
-                    {categoriesToRender.map((cat) => (
-                      <TouchableOpacity
-                        key={cat}
-                        style={[
-                          styles.categoryBubble,
-                          category === cat && styles.categoryBubbleSelected,
-                        ]}
-                        onPress={() => setCategory(cat)}
-                      >
-                        <Text
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.categoryScroll}
+                    contentContainerStyle={styles.categoryScrollContent}
+                  >
+                    {categoriesToRender.map((cat) => {
+                      const details = getCategoryDetails(cat);
+                      const IconComponent = details.icon;
+                      const isSelected = category === cat;
+
+                      return (
+                        <TouchableOpacity
+                          key={cat}
                           style={[
-                            styles.categoryBubbleText,
-                            category === cat &&
-                            styles.categoryBubbleTextSelected,
+                            styles.categoryBubble,
+                            isSelected && {
+                              borderColor: details.color,
+                              backgroundColor: details.bg,
+                            },
                           ]}
+                          onPress={() => setCategory(cat)}
                         >
-                          {cat}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                          <View style={styles.categoryItemInner}>
+                            <View style={[styles.categoryIconWrapper, { backgroundColor: isSelected ? details.color : "rgba(255, 255, 255, 0.05)" }]}>
+                              <IconComponent size={13} color={isSelected ? "#101223" : details.color} />
+                            </View>
+                            <Text
+                              style={[
+                                styles.categoryBubbleText,
+                                isSelected && { color: "#FFFFFF", fontWeight: "700" },
+                              ]}
+                            >
+                              {cat}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
                 </>
               )}
 
@@ -534,6 +589,7 @@ const styles = StyleSheet.create({
   },
   scrollForm: {
     padding: 24,
+    paddingBottom: Platform.OS === "ios" ? 80 : 60,
   },
   typeSelectorRow: {
     flexDirection: "row",
@@ -660,31 +716,37 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
+  categoryScroll: {
     marginBottom: 24,
   },
-  categoryBubble: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+  categoryScrollContent: {
+    gap: 8,
+    paddingRight: 16,
   },
-  categoryBubbleSelected: {
-    backgroundColor: "#6366F1",
-    borderColor: "#6366F1",
+  categoryBubble: {
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.06)",
+    borderRadius: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  categoryItemInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  categoryIconWrapper: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
   },
   categoryBubbleText: {
     color: "#B2C0D6",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
-  },
-  categoryBubbleTextSelected: {
-    color: "#FFFFFF",
   },
   descInput: {
     backgroundColor: "rgba(255, 255, 255, 0.03)",

@@ -19,30 +19,32 @@ export default function LoginScreen() {
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const { signIn } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
   const handleLogin = async () => {
-    if (!usernameOrEmail.trim() || !password.trim()) {
-      setErrorMsg("Please enter both username/email and password.");
+    const missing = [];
+    if (!usernameOrEmail.trim()) missing.push("Username or Email");
+    if (!password.trim()) missing.push("Password");
+
+    if (missing.length > 0) {
+      toast.error(`Missing fields: ${missing.join(", ")}`);
       return;
     }
 
     setIsSubmitting(true);
-    setErrorMsg(null);
 
     try {
       const result = await signIn(usernameOrEmail, password);
       if (!result.success) {
-        setErrorMsg(result.error || "Invalid credentials");
+        toast.error(result.error || "Invalid credentials");
       } else {
         toast.success("Welcome back! Logged in successfully.");
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "Something went wrong");
+      toast.error(err.message || "Something went wrong");
     } finally {
       setIsSubmitting(false);
     }
@@ -69,12 +71,6 @@ export default function LoginScreen() {
 
         <View style={styles.formContainer}>
           <Text style={styles.formTitle}>Welcome Back</Text>
-
-          {errorMsg && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{errorMsg}</Text>
-            </View>
-          )}
 
           {/* Username / Email Input */}
           <Text style={styles.label}>Username or Email</Text>

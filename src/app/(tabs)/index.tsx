@@ -75,13 +75,18 @@ export default function DashboardScreen() {
   const recentTransactions = transactions.slice(0, 5);
 
   const handleCreateWallet = async () => {
-    if (!newWalletName.trim()) {
-      Alert.alert("Validation Error", "Please enter a name for the wallet.");
+    const missing = [];
+    if (!newWalletName.trim()) missing.push("Wallet Name");
+    if (!newWalletBalance.trim()) missing.push("Starting Balance");
+
+    if (missing.length > 0) {
+      toast.error(`Missing fields: ${missing.join(", ")}`);
       return;
     }
+
     const initialBal = parseFloat(newWalletBalance);
     if (isNaN(initialBal)) {
-      Alert.alert("Validation Error", "Please enter a valid starting balance.");
+      toast.error("Please enter a valid starting balance.");
       return;
     }
 
@@ -93,16 +98,17 @@ export default function DashboardScreen() {
         newWalletType,
       );
       if (res.success) {
+        toast.success("Wallet created successfully.");
         setNewWalletName("");
         setNewWalletBalance("");
         setNewWalletType("cash");
         setWalletModalVisible(false);
       } else {
-        Alert.alert("Error", res.error || "Failed to create wallet.");
+        toast.error(res.error || "Failed to create wallet.");
       }
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "An unexpected error occurred.");
+      toast.error("An unexpected error occurred.");
     } finally {
       setIsCreatingWallet(false);
     }

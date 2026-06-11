@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTracker } from "../../context/TrackerContext";
 import { Budget } from "../../database/db";
 import { formatINR } from "../../utils/currency";
+import { useToast } from "../../context/ToastContext";
 
 const EXPENSE_CATEGORIES = [
   "Food & Dining",
@@ -30,6 +31,7 @@ const EXPENSE_CATEGORIES = [
 export default function BudgetsScreen() {
   const { transactions, budgets, addOrUpdateBudget, deleteBudget } =
     useTracker();
+  const { toast } = useToast();
 
   // Dialog State
   const [modalVisible, setModalVisible] = useState(false);
@@ -57,9 +59,18 @@ export default function BudgetsScreen() {
   );
 
   const handleSaveBudget = async () => {
+    const missing = [];
+    if (!selectedCategory) missing.push("Category");
+    if (!budgetAmount.trim()) missing.push("Budget Limit");
+
+    if (missing.length > 0) {
+      toast.error(`Missing fields: ${missing.join(", ")}`);
+      return;
+    }
+
     const parsedAmount = parseFloat(budgetAmount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      Alert.alert("Validation Error", "Please enter a valid budget limit.");
+      toast.error("Please enter a valid budget limit.");
       return;
     }
 
@@ -67,14 +78,15 @@ export default function BudgetsScreen() {
     try {
       const res = await addOrUpdateBudget(selectedCategory, parsedAmount);
       if (res.success) {
+        toast.success("Budget limit saved successfully.");
         setBudgetAmount("");
         setModalVisible(false);
       } else {
-        Alert.alert("Error", res.error || "Failed to save budget.");
+        toast.error(res.error || "Failed to save budget.");
       }
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "An unexpected error occurred.");
+      toast.error("An unexpected error occurred.");
     } finally {
       setIsSubmitting(false);
     }
@@ -91,8 +103,10 @@ export default function BudgetsScreen() {
           style: "destructive",
           onPress: async () => {
             const res = await deleteBudget(budgetId);
-            if (!res.success) {
-              Alert.alert("Error", res.error || "Failed to delete budget.");
+            if (res.success) {
+              toast.success("Budget limit removed successfully.");
+            } else {
+              toast.error(res.error || "Failed to delete budget.");
             }
           },
         },
