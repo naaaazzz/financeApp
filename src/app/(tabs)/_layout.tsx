@@ -84,9 +84,10 @@ const styles = StyleSheet.create({
     height: Platform.OS === 'ios' ? 74 : 64,
     borderRadius: 28,
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 30 : 20,
-    left: 12, // Small side gap
-    right: 12, // Small side gap
+    bottom: Platform.OS === 'ios' ? 15 : 15,
+    
+    left: 20, // Clean side spacing
+    right: 20, // Clean side spacing
     paddingHorizontal: 18, // Spacing inside for compact layout
     paddingBottom: Platform.OS === 'ios' ? 10 : 8,
     paddingTop: 8,

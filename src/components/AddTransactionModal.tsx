@@ -1,21 +1,21 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
-import { 
-  Camera, 
-  Check, 
-  Image as ImageIcon, 
-  X,
-  Utensils,
-  ShoppingBag,
-  Car,
-  Film,
-  Zap,
-  Heart,
+import {
   Briefcase,
-  Laptop,
-  TrendingUp,
+  Camera,
+  Car,
+  Check,
+  Film,
   Gift,
-  Layers
+  Heart,
+  Image as ImageIcon,
+  Laptop,
+  Layers,
+  ShoppingBag,
+  TrendingUp,
+  Utensils,
+  X,
+  Zap
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
@@ -31,10 +31,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useToast } from "../context/ToastContext";
 import { useTracker } from "../context/TrackerContext";
 import { TransactionType } from "../database/db";
 import { formatINR } from "../utils/currency";
-import { useToast } from "../context/ToastContext";
 
 interface AddTransactionModalProps {
   visible: boolean;
@@ -149,7 +149,10 @@ export default function AddTransactionModal({
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        toast.error("Media library access is required to attach receipts.");
+        Alert.alert(
+          "Permission Denied",
+          "Media library access is required to attach receipts.",
+        );
         return;
       }
 
@@ -164,7 +167,7 @@ export default function AddTransactionModal({
       }
     } catch (e) {
       console.error("Pick image error:", e);
-      toast.error("Failed to pick image.");
+      Alert.alert("Error", "Failed to pick image.");
     }
   };
 
@@ -172,7 +175,10 @@ export default function AddTransactionModal({
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        toast.error("Camera access is required to snap receipts.");
+        Alert.alert(
+          "Permission Denied",
+          "Camera access is required to snap receipts.",
+        );
         return;
       }
 
@@ -186,7 +192,7 @@ export default function AddTransactionModal({
       }
     } catch (e) {
       console.error("Take photo error:", e);
-      toast.error("Failed to capture photo.");
+      Alert.alert("Error", "Failed to capture photo.");
     }
   };
 
@@ -201,7 +207,7 @@ export default function AddTransactionModal({
       setReceiptUri(destUri);
     } catch (e) {
       console.error("Save image locally error:", e);
-      toast.error("Failed to copy receipt to local storage.");
+      Alert.alert("Error", "Failed to copy receipt to local storage.");
     }
   };
 
@@ -219,24 +225,22 @@ export default function AddTransactionModal({
   };
 
   const handleSubmit = async () => {
-    const missing = [];
-    if (!amount.trim()) missing.push("Amount");
-    if (!walletId) missing.push("Wallet");
-    if (type === "transfer" && !toWalletId) missing.push("Destination Wallet");
-
-    if (missing.length > 0) {
-      toast.error(`Missing fields: ${missing.join(", ")}`);
-      return;
-    }
-
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      toast.error("Please enter a valid positive amount.");
+      Alert.alert("Validation Error", "Please enter a valid positive amount.");
       return;
     }
 
-    if (type === "transfer" && walletId === toWalletId) {
-      toast.error("Please select different source and destination wallets.");
+    if (!walletId) {
+      Alert.alert("Validation Error", "Please select a wallet.");
+      return;
+    }
+
+    if (type === "transfer" && (!toWalletId || walletId === toWalletId)) {
+      Alert.alert(
+        "Validation Error",
+        "Please select different source and destination wallets.",
+      );
       return;
     }
 
@@ -248,7 +252,7 @@ export default function AddTransactionModal({
         const oldTx = transactions.find((t) => t.id === editTransactionId);
         const txDate = oldTx ? oldTx.date : new Date().toISOString();
         result = await updateTransaction(editTransactionId, {
-          walletId: walletId!,
+          walletId,
           toWalletId: type === "transfer" ? toWalletId : null,
           type,
           amount: parsedAmount,
@@ -259,7 +263,7 @@ export default function AddTransactionModal({
         });
       } else {
         result = await addTransaction({
-          walletId: walletId!,
+          walletId,
           toWalletId: type === "transfer" ? toWalletId : null,
           type,
           amount: parsedAmount,
@@ -275,10 +279,13 @@ export default function AddTransactionModal({
         resetForm();
         onClose();
       } else {
-        toast.error(result.error || "Could not save transaction.");
+        Alert.alert(
+          "Database Error",
+          result.error || "Could not save transaction.",
+        );
       }
     } catch (e: any) {
-      toast.error(e.message || "An error occurred.");
+      Alert.alert("Error", e.message || "An error occurred.");
     } finally {
       setIsSubmitting(false);
     }
@@ -589,7 +596,7 @@ const styles = StyleSheet.create({
   },
   scrollForm: {
     padding: 24,
-    paddingBottom: Platform.OS === "ios" ? 80 : 60,
+    paddingBottom: Platform.OS === "ios" ? 40 : 30,
   },
   typeSelectorRow: {
     flexDirection: "row",
@@ -816,7 +823,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 4,
-    paddingBottom: Platform.OS === "ios" ? 10 : 10,
   },
   submitBtnDisabled: {
     opacity: 0.6,

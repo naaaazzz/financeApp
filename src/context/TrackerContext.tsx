@@ -58,6 +58,7 @@ interface TrackerContextType {
   ) => Promise<{ success: boolean; error?: string }>;
   deleteBudget: (id: number) => Promise<{ success: boolean; error?: string }>;
   refreshData: () => Promise<void>;
+  importBackup: (parsed: any) => Promise<{ success: boolean; error?: string }>;
 }
 
 const TrackerContext = createContext<TrackerContextType | null>(null);
@@ -490,6 +491,71 @@ export function TrackerProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const importBackup = useCallback(async (parsed: any): Promise<{ success: boolean; error?: string }> => {
+    if (!user) {
+      return { success: false, error: "No user logged in." };
+    }
+
+    try {
+      const { wallets: backupWallets, transactions: backupTransactions, budgets: backupBudgets } = parsed;
+
+      await db.withTransactionAsync(async () => {
+        // 1. Clear current user data
+        await db.runAsync("DELETE FROM transactions WHERE user_id = ?;", [user.id]);
+        await db.runAsync("DELETE FROM wallets WHERE user_id = ?;", [user.id]);
+        await db.runAsync("DELETE FROM budgets WHERE user_id = ?;", [user.id]);
+
+        // 2. Insert wallets
+        if (Array.isArray(backupWallets)) {
+          for (const w of backupWallets) {
+            await db.runAsync(
+              "INSERT OR REPLACE INTO wallets (id, user_id, name, balance, type, created_at) VALUES (?, ?, ?, ?, ?, ?);",
+              [w.id, user.id, w.name, w.balance, w.type, w.created_at || new Date().toISOString()]
+            );
+          }
+        }
+
+        // 3. Insert transactions
+        if (Array.isArray(backupTransactions)) {
+          for (const t of backupTransactions) {
+            await db.runAsync(
+              "INSERT OR REPLACE INTO transactions (id, user_id, wallet_id, to_wallet_id, type, amount, category, description, date, receipt_image_path, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+              [
+                t.id,
+                user.id,
+                t.wallet_id,
+                t.to_wallet_id,
+                t.type,
+                t.amount,
+                t.category,
+                t.description,
+                t.date,
+                t.receipt_image_path || t.receiptImagePath,
+                t.created_at || new Date().toISOString()
+              ]
+            );
+          }
+        }
+
+        // 4. Insert budgets
+        if (Array.isArray(backupBudgets)) {
+          for (const b of backupBudgets) {
+            await db.runAsync(
+              "INSERT OR REPLACE INTO budgets (id, user_id, category, amount, period, created_at) VALUES (?, ?, ?, ?, ?, ?);",
+              [b.id, user.id, b.category, b.amount, b.period || "monthly", b.created_at || new Date().toISOString()]
+            );
+          }
+        }
+      });
+
+      await refreshData();
+      return { success: true };
+    } catch (e: any) {
+      console.error("importBackup database error:", e);
+      return { success: false, error: e.message || String(e) };
+    }
+  }, [db, user, refreshData]);
+
   return (
     <TrackerContext.Provider
       value={{
@@ -505,6 +571,7 @@ export function TrackerProvider({ children }: { children: React.ReactNode }) {
         addOrUpdateBudget,
         deleteBudget,
         refreshData,
+        importBackup,
       }}
     >
       {children}

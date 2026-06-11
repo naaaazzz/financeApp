@@ -22,16 +22,41 @@ import {
   ChevronRight,
   User as UserIcon,
   ShieldCheck,
-  Info
+  Info,
+  LogOut
 } from "lucide-react-native";
 import { useAuth } from "../../context/AuthContext";
 import { useTracker } from "../../context/TrackerContext";
+import { useToast } from "../../context/ToastContext";
 import { formatINR } from "../../utils/currency";
 
 export default function ProfileScreen() {
-  const { user } = useAuth();
-  const { wallets, transactions, budgets } = useTracker();
+  const { user, signOut } = useAuth();
+  const { wallets, transactions, budgets, importBackup } = useTracker();
+  const { toast } = useToast();
   const [isWorking, setIsWorking] = useState(false);
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Confirm Logout",
+      "Are you sure you want to log out? Local user sessions will be cleared.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await signOut();
+              toast.success("Logged out successfully.");
+            } catch (err: any) {
+              toast.error(err.message || "Failed to log out.");
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const exportTransactionsCSV = async () => {
     try {
@@ -124,7 +149,7 @@ export default function ProfileScreen() {
       );
     } catch (e: any) {
       console.error("Import error", e);
-      Alert.alert("Import Failed", e?.message || String(e));
+      toast.error(`Import Failed: ${e?.message || String(e)}`);
       setIsWorking(false);
     }
   };
@@ -140,13 +165,16 @@ export default function ProfileScreen() {
         JSON.stringify(parsed, null, 2),
         { encoding: FileSystem.EncodingType.UTF8 },
       );
-      Alert.alert(
-        "Import saved",
-        `Imported backup saved to ${path}. You may need to restart the app to apply changes.`,
-      );
+
+      const res = await importBackup(parsed);
+      if (res.success) {
+        toast.success("Backup imported successfully! All records loaded.");
+      } else {
+        toast.error(res.error || "Failed to parse database records.");
+      }
     } catch (e: any) {
       console.error("Perform import error", e);
-      Alert.alert("Import Failed", e?.message || String(e));
+      toast.error(`Import Failed: ${e?.message || String(e)}`);
     } finally {
       setIsWorking(false);
     }
@@ -284,6 +312,18 @@ export default function ProfileScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Log Out Button */}
+        <TouchableOpacity
+          style={styles.logoutBtn}
+          onPress={handleLogout}
+          activeOpacity={0.8}
+        >
+          <View style={styles.logoutBtnContent}>
+            <LogOut size={20} color="#EF4444" />
+            <Text style={styles.logoutBtnText}>Sign Out of Account</Text>
+          </View>
+        </TouchableOpacity>
 
       </ScrollView>
     </SafeAreaView>
@@ -518,5 +558,26 @@ const styles = StyleSheet.create({
     color: "#576275",
     fontSize: 12,
     lineHeight: 18,
+  },
+  logoutBtn: {
+    backgroundColor: "rgba(239, 68, 68, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.2)",
+    borderRadius: 20,
+    height: 56,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 18,
+    marginBottom: 24,
+  },
+  logoutBtnContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  logoutBtnText: {
+    color: "#F87171",
+    fontSize: 15,
+    fontWeight: "700",
   },
 });
