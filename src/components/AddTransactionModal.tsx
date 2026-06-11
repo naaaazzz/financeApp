@@ -279,12 +279,12 @@ export default function AddTransactionModal({
                       styles.typeBtn,
                       type === t && styles.typeBtnSelected,
                       type === t &&
-                        t === "expense" &&
-                        styles.typeExpenseSelected,
+                      t === "expense" &&
+                      styles.typeExpenseSelected,
                       type === t && t === "income" && styles.typeIncomeSelected,
                       type === t &&
-                        t === "transfer" &&
-                        styles.typeTransferSelected,
+                      t === "transfer" &&
+                      styles.typeTransferSelected,
                     ]}
                     onPress={() => setType(t)}
                   >
@@ -411,7 +411,7 @@ export default function AddTransactionModal({
                           style={[
                             styles.categoryBubbleText,
                             category === cat &&
-                              styles.categoryBubbleTextSelected,
+                            styles.categoryBubbleTextSelected,
                           ]}
                         >
                           {cat}
@@ -498,8 +498,6 @@ const styles = StyleSheet.create({
   },
   modalWrapper: {
     maxHeight: "90%",
-    width: "100%",
-    flexShrink: 1,
   },
   modalContent: {
     backgroundColor: "#101223",
@@ -508,7 +506,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.08)",
     paddingBottom: Platform.OS === "ios" ? 40 : 20,
-    flexShrink: 1,
   },
   modalHeader: {
     flexDirection: "row",
@@ -534,7 +531,6 @@ const styles = StyleSheet.create({
   },
   scrollForm: {
     padding: 24,
-    paddingBottom: Platform.OS === "ios" ? 50 : 30,
   },
   typeSelectorRow: {
     flexDirection: "row",
@@ -755,6 +751,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 4,
+    paddingBottom: Platform.OS === "ios" ? 10 : 10,
   },
   submitBtnDisabled: {
     opacity: 0.6,
