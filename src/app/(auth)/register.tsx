@@ -13,6 +13,7 @@ import {
     View,
 } from "react-native";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 
 export default function RegisterScreen() {
   const [username, setUsername] = useState("");
@@ -24,6 +25,7 @@ export default function RegisterScreen() {
 
   const { signUp } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
 
   const handleRegister = async () => {
     if (!username.trim() || !email.trim() || !password.trim()) {
@@ -53,6 +55,8 @@ export default function RegisterScreen() {
       const result = await signUp(username.trim(), email.trim(), password);
       if (!result.success) {
         setErrorMsg(result.error || "Failed to register account.");
+      } else {
+        toast.success("Account registered successfully! Welcome.");
       }
     } catch (err: any) {
       setErrorMsg(err.message || "Something went wrong");

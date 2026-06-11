@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
-    paddingBottom: 60,
+    paddingBottom: 110,
   },
   profileHeader: {
     flexDirection: "row",

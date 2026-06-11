@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DATABASE_NAME, initializeDatabase } from '../database/db';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { TrackerProvider } from '../context/TrackerContext';
+import { ToastProvider } from '../context/ToastContext';
 
 // Navigation gate based on offline authentication status
 function RootNavigationGate() {
@@ -46,7 +47,9 @@ export default function RootLayout() {
       <SQLiteProvider databaseName={DATABASE_NAME} onInit={initializeDatabase}>
         <AuthProvider>
           <TrackerProvider>
-            <RootNavigationGate />
+            <ToastProvider>
+              <RootNavigationGate />
+            </ToastProvider>
           </TrackerProvider>
         </AuthProvider>
       </SQLiteProvider>

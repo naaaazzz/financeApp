@@ -27,9 +27,11 @@ import { useTracker } from "../../context/TrackerContext";
 import { Transaction, TransactionType } from "../../database/db";
 import { formatINR } from "../../utils/currency";
 import AddTransactionModal from "../../components/AddTransactionModal";
+import { useToast } from "../../context/ToastContext";
 
 export default function TransactionsScreen() {
   const { transactions, wallets, deleteTransaction } = useTracker();
+  const { toast } = useToast();
 
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
@@ -85,6 +87,7 @@ export default function TransactionsScreen() {
           onPress: async () => {
             const res = await deleteTransaction(txId);
             if (res.success) {
+              toast.success("Transaction deleted successfully");
               setSelectedTx(null);
             } else {
               Alert.alert(
@@ -633,7 +636,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   listContent: {
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   txListContainer: {
     backgroundColor: "#101223",

@@ -13,6 +13,7 @@ import {
     View,
 } from "react-native";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 
 export default function LoginScreen() {
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
@@ -22,6 +23,7 @@ export default function LoginScreen() {
 
   const { signIn } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
 
   const handleLogin = async () => {
     if (!usernameOrEmail.trim() || !password.trim()) {
@@ -36,6 +38,8 @@ export default function LoginScreen() {
       const result = await signIn(usernameOrEmail, password);
       if (!result.success) {
         setErrorMsg(result.error || "Invalid credentials");
+      } else {
+        toast.success("Welcome back! Logged in successfully.");
       }
     } catch (err: any) {
       setErrorMsg(err.message || "Something went wrong");

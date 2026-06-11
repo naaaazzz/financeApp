@@ -18,6 +18,7 @@ import {
 import { useTracker } from "../context/TrackerContext";
 import { TransactionType } from "../database/db";
 import { formatINR } from "../utils/currency";
+import { useToast } from "../context/ToastContext";
 
 interface AddTransactionModalProps {
   visible: boolean;
@@ -49,6 +50,7 @@ export default function AddTransactionModal({
   editTransactionId,
 }: AddTransactionModalProps) {
   const { wallets, transactions, addTransaction, updateTransaction } = useTracker();
+  const { toast } = useToast();
 
   const [type, setType] = useState<TransactionType>("expense");
   const [amount, setAmount] = useState("");
@@ -230,6 +232,7 @@ export default function AddTransactionModal({
       }
 
       if (result.success) {
+        toast.success(editTransactionId ? "Transaction updated successfully" : "Transaction added successfully");
         resetForm();
         onClose();
       } else {

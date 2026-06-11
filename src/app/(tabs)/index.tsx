@@ -32,11 +32,13 @@ import AnalyticsChart from "../../components/AnalyticsChart";
 import { useAuth } from "../../context/AuthContext";
 import { useTracker } from "../../context/TrackerContext";
 import { Transaction, WalletType } from "../../database/db";
+import { useToast } from "../../context/ToastContext";
 import { formatINR } from "../../utils/currency";
 
 export default function DashboardScreen() {
   const { user, signOut } = useAuth();
   const { transactions, wallets, addWallet, deleteTransaction } = useTracker();
+  const { toast } = useToast();
 
   // Modal Visibility states
   const [txModalVisible, setTxModalVisible] = useState(false);
@@ -117,14 +119,15 @@ export default function DashboardScreen() {
           style: "destructive",
           onPress: async () => {
             const res = await deleteTransaction(txId);
-            if (res.success) {
-              setSelectedTx(null);
-            } else {
-              Alert.alert(
-                "Error",
-                res.error || "Failed to delete transaction.",
-              );
-            }
+             if (res.success) {
+               toast.success("Transaction deleted successfully");
+               setSelectedTx(null);
+             } else {
+               Alert.alert(
+                 "Error",
+                 res.error || "Failed to delete transaction.",
+               );
+             }
           },
         },
       ],
@@ -142,6 +145,7 @@ export default function DashboardScreen() {
           style: "destructive",
           onPress: async () => {
             await signOut();
+            toast.success("Logged out successfully.");
           },
         },
       ],
@@ -358,13 +362,6 @@ export default function DashboardScreen() {
         </View>
       </ScrollView>
 
-      {/* Floating Action Button for Transactions */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setTxModalVisible(true)}
-      >
-        <Plus size={24} color="#FFFFFF" strokeWidth={2.5} />
-      </TouchableOpacity>
 
       {/* Add Transaction Dialog */}
       <AddTransactionModal
