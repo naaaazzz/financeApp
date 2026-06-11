@@ -54,3 +54,15 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Local Expo CLI
+
+If you see a warning about the legacy `expo-cli`, uninstall the global package and use the local CLI bundled with this project:
+
+```bash
+npm uninstall -g expo-cli
+npx expo --version
+```
+
+Run commands with `npx expo <command>` or via npm scripts (`npm start`) which call the local CLI.
+"# financeApp" 
