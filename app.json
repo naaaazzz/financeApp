@@ -12,12 +12,15 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#101223",
+        "backgroundColor": "#0A0C16",
         "foregroundImage": "./assets/images/spending.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/spending.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.niyasnas.incomeexpensetracker",
+      "usesCleartextTraffic": true,
+      "allowBackup": false,
+      "newArchEnabled": false
     },
     "web": {
       "output": "static",
@@ -45,8 +48,13 @@
       "expo-secure-store"
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "18666bef-801f-49fa-81b5-76072d3a2f74"
+      }
     }
   }
 }
