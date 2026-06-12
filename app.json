@@ -18,7 +18,6 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.niyasnas.incomeexpensetracker",
-      "usesCleartextTraffic": true,
       "allowBackup": false,
       "newArchEnabled": false
     },
