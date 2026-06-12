@@ -118,7 +118,7 @@ export default function LoginScreen() {
 
           {/* Register Redirect */}
           <View style={styles.footerRow}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
+            <Text style={styles.footerText}>{"Don't have an account? "}</Text>
             <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
               <Text style={styles.signUpText}>Sign Up</Text>
             </TouchableOpacity>
