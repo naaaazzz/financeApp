@@ -7,6 +7,7 @@
     "icon": "./assets/images/spending.png",
     "scheme": "incomeexpensetracker",
     "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
     "ios": {
       "icon": "./assets/images/spending.png"
     },
@@ -17,9 +18,8 @@
         "monochromeImage": "./assets/images/spending.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.niyasnas.incomeexpensetracker",
       "allowBackup": false,
-      "newArchEnabled": false
+      "package": "com.nazhoz.incomeexpensetracker"
     },
     "web": {
       "output": "static",
@@ -44,7 +44,8 @@
         }
       ],
       "expo-sqlite",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-image-picker"
     ],
     "experiments": {
       "typedRoutes": true
@@ -52,7 +53,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "18666bef-801f-49fa-81b5-76072d3a2f74"
+        "projectId": "c7668ced-0abb-4e9f-b439-ee91244e1bc8"
       }
     }
   }

@@ -11,9 +11,6 @@
         "env": {
           "EXPO_NO_TELEMETRY": "1"
         }
-      },
-      "env": {
-        "EXPO_USE_HERMES": "1"
       }
     },
     "preview2": {
