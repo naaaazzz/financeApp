@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
-import { View, ActivityIndicator, StatusBar, Text, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StatusBar, Text, StyleSheet, Platform, AppState } from 'react-native';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as NavigationBar from 'expo-navigation-bar';
 import { DATABASE_NAME, initializeDatabase } from '../database/db';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { TrackerProvider } from '../context/TrackerContext';
@@ -96,6 +97,42 @@ function RootNavigationGate() {
 }
 
 export default function RootLayout() {
+  // Navigation bar immersive hiding on Android
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      const configureNavigationBar = async () => {
+        try {
+          // Set navigation bar position to absolute so it overlays the content
+          await NavigationBar.setPositionAsync('absolute');
+          
+          // Make the navigation bar background completely transparent to avoid black bars
+          await NavigationBar.setBackgroundColorAsync('#00000000');
+          
+          // Set behavior to overlay-swipe (Immersive Sticky Mode)
+          await NavigationBar.setBehaviorAsync('overlay-swipe');
+          
+          // Hide the navigation bar
+          await NavigationBar.setVisibilityAsync('hidden');
+        } catch (error) {
+          console.warn('Android Navigation Bar layout initialization error:', error);
+        }
+      };
+
+      configureNavigationBar();
+
+      // Re-apply navigation bar visibility configurations when app comes back to focus
+      const subscription = AppState.addEventListener('change', (nextAppState) => {
+        if (nextAppState === 'active') {
+          configureNavigationBar();
+        }
+      });
+
+      return () => {
+        subscription.remove();
+      };
+    }
+  }, []);
+
   return (
     <ErrorBoundary>
       <SafeAreaProvider style={{ flex: 1, backgroundColor: '#0A0C16' }}>

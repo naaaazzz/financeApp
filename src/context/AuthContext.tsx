@@ -12,8 +12,17 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   signIn: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signUp: (username: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signUp: (username: string, email: string, phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
+  pendingOtpUser: { method: 'email' | 'phone'; value: string } | null;
+  requestOtp: (identifier: string, isPhone: boolean, password?: string) => Promise<{ success: boolean; error?: string; otp?: string }>;
+  verifyOtp: (enteredOtp: string) => Promise<{ success: boolean; error?: string }>;
+  clearOtpSession: () => void;
+  pendingForgotUser: User | null;
+  requestForgotPasswordOtp: (email: string) => Promise<{ success: boolean; error?: string; otp?: string }>;
+  verifyForgotPasswordOtp: (enteredOtp: string) => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  clearForgotSession: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -29,6 +38,11 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [pendingUser, setPendingUser] = useState<User | null>(null);
+  const [generatedOtp, setGeneratedOtp] = useState<string | null>(null);
+  const [pendingOtpUser, setPendingOtpUser] = useState<{ method: 'email' | 'phone'; value: string } | null>(null);
+  const [pendingForgotUser, setPendingForgotUser] = useState<User | null>(null);
+  const [generatedForgotOtp, setGeneratedForgotOtp] = useState<string | null>(null);
   const db = useSQLiteContext();
 
   const autoBackupUserData = async (userId: number) => {
@@ -179,16 +193,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (username: string, email: string, password: string) => {
+  const signUp = async (username: string, email: string, phone: string, password: string) => {
     try {
       const trimmedUsername = username.trim().toLowerCase();
       const trimmedEmail = email.trim().toLowerCase();
+      const trimmedPhone = phone.trim();
       
       if (trimmedUsername.length < 3) {
         return { success: false, error: 'Username must be at least 3 characters long' };
       }
       if (password.length < 6) {
         return { success: false, error: 'Password must be at least 6 characters long' };
+      }
+      if (!trimmedPhone) {
+        return { success: false, error: 'Phone number is required' };
       }
 
       // Check if username already exists
@@ -209,12 +227,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: 'Email is already registered' };
       }
 
+      // Check if phone already exists
+      const phoneExists = await db.getFirstAsync<User>(
+        'SELECT id FROM users WHERE phone = ? LIMIT 1;',
+        [trimmedPhone]
+      );
+      if (phoneExists) {
+        return { success: false, error: 'Phone number is already registered' };
+      }
+
       const pwdHash = hashPassword(password);
 
       // Insert new user
       const result = await db.runAsync(
-        'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?);',
-        [trimmedUsername, trimmedEmail, pwdHash]
+        'INSERT INTO users (username, email, phone, password_hash, password_plaintext) VALUES (?, ?, ?, ?, ?);',
+        [trimmedUsername, trimmedEmail, trimmedPhone, pwdHash, password]
       );
 
       const newUserId = result.lastInsertRowId;
@@ -224,7 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Fetch the full registered user details to set as active session
       const newUserObj = await db.getFirstAsync<User>(
-        'SELECT id, username, email, created_at FROM users WHERE id = ? LIMIT 1;',
+        'SELECT id, username, email, phone, password_plaintext, created_at FROM users WHERE id = ? LIMIT 1;',
         [newUserId]
       );
 
@@ -255,6 +282,168 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const requestOtp = async (identifier: string, isPhone: boolean, password?: string) => {
+    try {
+      const trimmedVal = identifier.trim();
+      
+      let foundUser: User | null = null;
+      if (isPhone) {
+        // Phone login does not verify password, only checks if phone number exists
+        foundUser = await db.getFirstAsync<User>(
+          'SELECT id, username, email, phone, created_at FROM users WHERE phone = ? LIMIT 1;',
+          [trimmedVal]
+        );
+      } else {
+        // Email login requires password validation
+        if (!password) {
+          return { success: false, error: 'Password is required for email login' };
+        }
+        const pwdHash = hashPassword(password);
+        foundUser = await db.getFirstAsync<User>(
+          'SELECT id, username, email, phone, created_at FROM users WHERE email = ? AND password_hash = ? LIMIT 1;',
+          [trimmedVal.toLowerCase(), pwdHash]
+        );
+      }
+
+      if (!foundUser) {
+        return { success: false, error: 'Invalid credentials' };
+      }
+
+      // Generate a simulated 6-digit OTP code
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      setPendingUser(foundUser);
+      setGeneratedOtp(otpCode);
+      setPendingOtpUser({
+        method: isPhone ? 'phone' : 'email',
+        value: trimmedVal
+      });
+
+      return { success: true, otp: otpCode };
+    } catch (error: any) {
+      console.error('Request OTP Error:', error);
+      return { success: false, error: error?.message || 'Failed to generate OTP' };
+    }
+  };
+
+  const verifyOtp = async (enteredOtp: string) => {
+    try {
+      if (!pendingUser || !generatedOtp) {
+        return { success: false, error: 'No active OTP verification session found' };
+      }
+
+      if (enteredOtp !== generatedOtp) {
+        return { success: false, error: 'Incorrect OTP code. Please check and try again.' };
+      }
+
+      const token = generateToken();
+      const now = Date.now();
+
+      // Clear any existing sessions
+      await db.runAsync('DELETE FROM user_sessions;');
+
+      // Insert new session token record
+      await db.runAsync(
+        'INSERT OR REPLACE INTO user_sessions (user_id, token, created_at, last_active_at) VALUES (?, ?, ?, ?);',
+        [pendingUser.id, token, now, now]
+      );
+
+      // Create automatic backup
+      await autoBackupUserData(pendingUser.id);
+
+      // Successfully logged in! Update main context user
+      setUser(pendingUser);
+      
+      // Clear OTP states
+      setPendingUser(null);
+      setGeneratedOtp(null);
+      setPendingOtpUser(null);
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Verify OTP Error:', error);
+      return { success: false, error: error?.message || 'Verification failed' };
+    }
+  };
+
+  const clearOtpSession = () => {
+    setPendingUser(null);
+    setGeneratedOtp(null);
+    setPendingOtpUser(null);
+  };
+
+  const requestForgotPasswordOtp = async (email: string) => {
+    try {
+      const trimmedEmail = email.trim().toLowerCase();
+      
+      const foundUser = await db.getFirstAsync<User>(
+        'SELECT id, username, email, phone, password_hash, password_plaintext, created_at FROM users WHERE email = ? LIMIT 1;',
+        [trimmedEmail]
+      );
+
+      if (!foundUser) {
+        return { success: false, error: 'No account registered with this email address' };
+      }
+
+      // Generate a simulated 6-digit Forgot Password OTP code
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      setPendingForgotUser(foundUser);
+      setGeneratedForgotOtp(otpCode);
+
+      return { success: true, otp: otpCode };
+    } catch (error: any) {
+      console.error('Request Forgot Password OTP Error:', error);
+      return { success: false, error: error?.message || 'Failed to generate Forgot Password OTP' };
+    }
+  };
+
+  const verifyForgotPasswordOtp = async (enteredOtp: string) => {
+    try {
+      if (!pendingForgotUser || !generatedForgotOtp) {
+        return { success: false, error: 'No active password recovery session found' };
+      }
+
+      if (enteredOtp !== generatedForgotOtp) {
+        return { success: false, error: 'Incorrect OTP code. Please try again.' };
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Verify Forgot Password OTP Error:', error);
+      return { success: false, error: error?.message || 'Verification failed' };
+    }
+  };
+
+  const resetPassword = async (newPassword: string) => {
+    try {
+      if (!pendingForgotUser) {
+        return { success: false, error: 'No active password recovery session found' };
+      }
+
+      const trimmedPwd = newPassword.trim();
+      if (trimmedPwd.length < 6) {
+        return { success: false, error: 'Password must be at least 6 characters long' };
+      }
+
+      const newHash = hashPassword(trimmedPwd);
+      await db.runAsync(
+        'UPDATE users SET password_hash = ?, password_plaintext = ? WHERE id = ?;',
+        [newHash, trimmedPwd, pendingForgotUser.id]
+      );
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Reset Password Error:', error);
+      return { success: false, error: error?.message || 'Failed to update password' };
+    }
+  };
+
+  const clearForgotSession = () => {
+    setPendingForgotUser(null);
+    setGeneratedForgotOtp(null);
+  };
+
   const signOut = async () => {
     try {
       if (user) {
@@ -269,7 +458,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{
+      user,
+      isLoading,
+      signIn,
+      signUp,
+      signOut,
+      pendingOtpUser,
+      requestOtp,
+      verifyOtp,
+      clearOtpSession,
+      pendingForgotUser,
+      requestForgotPasswordOtp,
+      verifyForgotPasswordOtp,
+      resetPassword,
+      clearForgotSession
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -7,7 +7,9 @@ export interface User {
   id: number;
   username: string;
   email: string;
+  phone?: string | null;
   password_hash: string;
+  password_plaintext?: string | null;
   created_at: string;
 }
 
@@ -69,10 +71,31 @@ export async function initializeDatabase(db: SQLiteDatabase) {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         email TEXT UNIQUE NOT NULL,
+        phone TEXT UNIQUE,
         password_hash TEXT NOT NULL,
+        password_plaintext TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Migration: Add phone column to users table if it doesn't exist (e.g. for existing local installs)
+    try {
+      await db.execAsync('ALTER TABLE users ADD COLUMN phone TEXT;');
+    } catch (error) {
+      // Column may already exist, ignore error
+    }
+    try {
+      await db.execAsync('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone);');
+    } catch (error) {
+      // Index may already exist, ignore error
+    }
+
+    // Migration: Add password_plaintext column to users table if it doesn't exist
+    try {
+      await db.execAsync('ALTER TABLE users ADD COLUMN password_plaintext TEXT;');
+    } catch (error) {
+      // Column may already exist, ignore error
+    }
 
     // Wallets table
     await db.execAsync(`

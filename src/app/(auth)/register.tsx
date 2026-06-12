@@ -1,8 +1,9 @@
 import { useRouter } from "expo-router";
-import { Lock, Mail, User } from "lucide-react-native";
+import { Lock, Mail, User, Phone } from "lucide-react-native";
 import React, { useState } from "react";
 import {
     ActivityIndicator,
+    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -18,6 +19,7 @@ import { useToast } from "../../context/ToastContext";
 export default function RegisterScreen() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,6 +32,7 @@ export default function RegisterScreen() {
     const missing = [];
     if (!username.trim()) missing.push("Username");
     if (!email.trim()) missing.push("Email Address");
+    if (!phone.trim()) missing.push("Phone Number");
     if (!password.trim()) missing.push("Password");
     if (!confirmPassword.trim()) missing.push("Confirm Password");
 
@@ -56,7 +59,7 @@ export default function RegisterScreen() {
     setIsSubmitting(true);
 
     try {
-      const result = await signUp(username.trim(), email.trim(), password);
+      const result = await signUp(username.trim(), email.trim(), phone.trim(), password);
       if (!result.success) {
         toast.error(result.error || "Failed to register account.");
       } else {
@@ -79,10 +82,12 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.headerArea}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>₹</Text>
-          </View>
-          <Text style={styles.appName}>Antigravity Tracker</Text>
+          <Image
+            source={require("../../../assets/images/spending.png")}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.appName}>Family Manager</Text>
           <Text style={styles.subtitle}>
             Create an offline account to get started.
           </Text>
@@ -117,6 +122,22 @@ export default function RegisterScreen() {
               keyboardType="email-address"
               value={email}
               onChangeText={setEmail}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          {/* Phone Number Input */}
+          <Text style={styles.label}>Phone Number</Text>
+          <View style={styles.inputContainer}>
+            <Phone size={18} color="#8F9BB3" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Enter phone number"
+              placeholderTextColor="#576275"
+              keyboardType="phone-pad"
+              value={phone}
+              onChangeText={setPhone}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -196,24 +217,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 30,
   },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#6366F1",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 14,
-    shadowColor: "#6366F1",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  logoText: {
-    color: "#FFFFFF",
-    fontSize: 32,
-    fontWeight: "bold",
+  logoImage: {
+    width: 80,
+    height: 80,
+    marginBottom: 16,
   },
   appName: {
     color: "#FFFFFF",

@@ -3,8 +3,9 @@ import { StyleSheet, Text, View, Platform } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
+  withTiming,
   runOnJS,
+  Easing,
 } from "react-native-reanimated";
 import { CheckCircle, AlertCircle, Info } from "lucide-react-native";
 
@@ -13,13 +14,15 @@ type ToastType = "success" | "error" | "info";
 interface ToastOptions {
   type: ToastType;
   message: string;
+  duration?: number;
 }
 
 interface ToastContextType {
   toast: {
-    success: (message: string) => void;
-    error: (message: string) => void;
-    info: (message: string) => void;
+    success: (message: string, duration?: number) => void;
+    error: (message: string, duration?: number) => void;
+    info: (message: string, duration?: number) => void;
+    dismiss: () => void;
   };
 }
 
@@ -41,33 +44,35 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const opacity = useSharedValue(0);
 
   const hideToast = useCallback(() => {
-    translateY.value = withSpring(-150, { damping: 15 }, () => {
+    translateY.value = withTiming(-150, { duration: 250, easing: Easing.out(Easing.ease) }, () => {
       runOnJS(setActiveToast)(null);
     });
-    opacity.value = withSpring(0);
+    opacity.value = withTiming(0, { duration: 250 });
   }, [translateY, opacity]);
 
-  const showToast = useCallback((type: ToastType, message: string) => {
+  const showToast = useCallback((type: ToastType, message: string, duration?: number) => {
     // Clear any existing timers
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
 
-    setActiveToast({ type, message });
+    setActiveToast({ type, message, duration });
     
     // Animate in
-    translateY.value = withSpring(0, { damping: 15 });
-    opacity.value = withSpring(1);
+    translateY.value = withTiming(0, { duration: 250, easing: Easing.out(Easing.ease) });
+    opacity.value = withTiming(1, { duration: 250 });
 
-    // Auto dismiss after 3 seconds
+    // Auto dismiss after specified duration (defaults to 3 seconds)
+    const dismissDuration = duration !== undefined ? duration : 3000;
     timerRef.current = setTimeout(() => {
       hideToast();
-    }, 3000);
+    }, dismissDuration);
   }, [translateY, opacity, hideToast]);
 
-  const success = useCallback((message: string) => showToast("success", message), [showToast]);
-  const error = useCallback((message: string) => showToast("error", message), [showToast]);
-  const info = useCallback((message: string) => showToast("info", message), [showToast]);
+  const success = useCallback((message: string, duration?: number) => showToast("success", message, duration), [showToast]);
+  const error = useCallback((message: string, duration?: number) => showToast("error", message, duration), [showToast]);
+  const info = useCallback((message: string, duration?: number) => showToast("info", message, duration), [showToast]);
+  const dismiss = useCallback(() => hideToast(), [hideToast]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -97,7 +102,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ToastContext.Provider value={{ toast: { success, error, info } }}>
+    <ToastContext.Provider value={{ toast: { success, error, info, dismiss } }}>
       {children}
       {activeToast && (
         <Animated.View style={[styles.toastContainer, getToastStyle(activeToast.type), animatedStyle]}>

@@ -1,8 +1,9 @@
 import { useRouter } from "expo-router";
-import { Lock, Mail } from "lucide-react-native";
+import { Lock, Mail, Phone } from "lucide-react-native";
 import React, { useState } from "react";
 import {
     ActivityIndicator,
+    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -16,18 +17,26 @@ import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 
 export default function LoginScreen() {
-  const [usernameOrEmail, setUsernameOrEmail] = useState("");
+  const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { signIn } = useAuth();
+  const { requestOtp, requestForgotPasswordOtp } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
   const handleLogin = async () => {
+    const isPhone = loginMethod === "phone";
+    const identifier = isPhone ? phone : email;
     const missing = [];
-    if (!usernameOrEmail.trim()) missing.push("Username or Email");
-    if (!password.trim()) missing.push("Password");
+    if (!identifier.trim()) {
+      missing.push(isPhone ? "Phone Number" : "Email Address");
+    }
+    if (!isPhone && !password.trim()) {
+      missing.push("Password");
+    }
 
     if (missing.length > 0) {
       toast.error(`Missing fields: ${missing.join(", ")}`);
@@ -37,14 +46,37 @@ export default function LoginScreen() {
     setIsSubmitting(true);
 
     try {
-      const result = await signIn(usernameOrEmail, password);
+      const result = await requestOtp(identifier, isPhone, isPhone ? undefined : password);
       if (!result.success) {
         toast.error(result.error || "Invalid credentials");
       } else {
-        toast.success("Welcome back! Logged in successfully.");
+        toast.info(`Your OTP code is ${result.otp}. Enter it below to log in.`, 240000);
+        router.push("/(auth)/otp");
       }
     } catch (err: any) {
       toast.error(err.message || "Something went wrong");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      toast.error("Please enter your email address first.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const result = await requestForgotPasswordOtp(email.trim());
+      if (result.success) {
+        toast.info(`Your Password Recovery OTP is: ${result.otp}. Enter it on the next screen.`, 240000);
+        router.push("/(auth)/forgot-password");
+      } else {
+        toast.error(result.error || "Failed to generate recovery OTP");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Something went wrong");
     } finally {
       setIsSubmitting(false);
     }
@@ -60,10 +92,12 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.headerArea}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>₹</Text>
-          </View>
-          <Text style={styles.appName}>Antigravity Tracker</Text>
+          <Image
+            source={require("../../../assets/images/spending.png")}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.appName}>Family Manager</Text>
           <Text style={styles.subtitle}>
             Track your expenses offline, securely.
           </Text>
@@ -72,36 +106,78 @@ export default function LoginScreen() {
         <View style={styles.formContainer}>
           <Text style={styles.formTitle}>Welcome Back</Text>
 
-          {/* Username / Email Input */}
-          <Text style={styles.label}>Username or Email</Text>
-          <View style={styles.inputContainer}>
-            <Mail size={18} color="#8F9BB3" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter username or email"
-              placeholderTextColor="#576275"
-              value={usernameOrEmail}
-              onChangeText={setUsernameOrEmail}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+          {/* Login Method Toggle Tabs */}
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tabButton, loginMethod === "email" && styles.activeTabButton]}
+              onPress={() => setLoginMethod("email")}
+            >
+              <Mail size={20} color={loginMethod === "email" ? "#FFFFFF" : "#8F9BB3"} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabButton, loginMethod === "phone" && styles.activeTabButton]}
+              onPress={() => setLoginMethod("phone")}
+            >
+              <Phone size={20} color={loginMethod === "phone" ? "#FFFFFF" : "#8F9BB3"} />
+            </TouchableOpacity>
           </View>
 
-          {/* Password Input */}
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.inputContainer}>
-            <Lock size={18} color="#8F9BB3" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter password"
-              placeholderTextColor="#576275"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+          {/* Dynamic Login Input Fields */}
+          {loginMethod === "email" ? (
+            <>
+              <Text style={styles.label}>Email Address</Text>
+              <View style={styles.inputContainer}>
+                <Mail size={18} color="#8F9BB3" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter email address"
+                  placeholderTextColor="#576275"
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                />
+              </View>
+
+              {/* Password Input (Only for Email) */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={styles.label}>Password</Text>
+                <TouchableOpacity onPress={handleForgotPassword} style={{ marginBottom: 8 }}>
+                  <Text style={styles.forgotText}>Forgot Password?</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.inputContainer}>
+                <Lock size={18} color="#8F9BB3" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter password"
+                  placeholderTextColor="#576275"
+                  secureTextEntry
+                  value={password}
+                  onChangeText={setPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={styles.label}>Phone Number</Text>
+              <View style={styles.inputContainer}>
+                <Phone size={18} color="#8F9BB3" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter phone number"
+                  placeholderTextColor="#576275"
+                  value={phone}
+                  onChangeText={setPhone}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="phone-pad"
+                />
+              </View>
+            </>
+          )}
 
           {/* Login Button */}
           <TouchableOpacity
@@ -143,24 +219,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 40,
   },
-  logoCircle: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: "#6366F1",
-    justifyContent: "center",
-    alignItems: "center",
+  logoImage: {
+    width: 80,
+    height: 80,
     marginBottom: 16,
-    shadowColor: "#6366F1",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  logoText: {
-    color: "#FFFFFF",
-    fontSize: 36,
-    fontWeight: "bold",
   },
   appName: {
     color: "#FFFFFF",
@@ -205,6 +267,38 @@ const styles = StyleSheet.create({
     color: "#F87171",
     fontSize: 13,
     textAlign: "center",
+  },
+  tabContainer: {
+    flexDirection: "row",
+    backgroundColor: "rgba(10, 12, 22, 0.6)",
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 8,
+  },
+  activeTabButton: {
+    backgroundColor: "#6366F1",
+    shadowColor: "#6366F1",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabText: {
+    color: "#8F9BB3",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  activeTabText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
   },
   label: {
     color: "#B2C0D6",
@@ -263,5 +357,10 @@ const styles = StyleSheet.create({
     color: "#6366F1",
     fontSize: 14,
     fontWeight: "700",
+  },
+  forgotText: {
+    color: "#6366F1",
+    fontSize: 12,
+    fontWeight: "600",
   },
 });
